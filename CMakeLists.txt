@@ -1,5 +1,9 @@
 cmake_minimum_required(VERSION 3.16)
-project(inline-keyboard-status CXX)
+project(inline-keyboard-status VERSION 0.1.0 LANGUAGES CXX)
+
+# 版本号编进二进制：插件连上来时会推一行 version:<x.y.z>，键盘那边拿它和自己期望的
+# 版本比对，不一致就提示用户更新 addon
+add_compile_definitions(INLINE_KEYBOARD_VERSION="${PROJECT_VERSION}")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

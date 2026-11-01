@@ -240,7 +240,7 @@ private:
      * 这里收敛成一个判断，只在归属真的翻转时才动 fcitx5。
      */
     void updateUiOwnership() {
-        const bool owns = clientAlive();
+        const bool owns = clientAlive() && !uiReleased_;
         if (owns == uiOwned_) {
             return;
         }
@@ -844,6 +844,8 @@ private:
         writeImList();
         // 焦点状态也是状态的一部分，连上就先告诉客户端一次
         pushLine(inline_keyboard::focusMessage(focused_));
+        // 版本也一起推：键盘按它判断这个 addon 是不是配套的那版
+        pushLine("version:" INLINE_KEYBOARD_VERSION);
         if (auto *ic = activeContext()) {
             pushState(ic);
         }
@@ -958,13 +960,16 @@ private:
             return;
         }
         if (line == "release") {
-            // 旧的显式交还命令。现在 UI 归属只跟「活着的连接」走：
-            // 断开连接本身就会交还，这条留着只是为了兼容还在发它的旧插件。
-            logEvent("release requested (ignored)");
+            // 键盘收起了但连接还留着（自动弹出需要常连收 focus），这时必须显式交还，
+            // 否则 classicui 一直被 suspend，别的应用看不到候选窗
+            uiReleased_ = true;
+            logEvent("release requested");
+            updateUiOwnership();
             return;
         }
         if (line == "reclaim") {
             // 插件发现 UI 被顶掉了，要求重新申领。走和心跳同一条路径
+            uiReleased_ = false;
             logEvent("reclaim requested");
             claimUi();
             return;
@@ -1087,6 +1092,8 @@ private:
     inline_keyboard::HeartbeatState heartbeat_;
     // 当前 UI 归属是不是 addon（键盘内 UI），只在变化时动 fcitx5
     bool uiOwned_ = false;
+    // 连接还在但插件主动交还了 UI（键盘收起、自动弹出要保持连接）
+    bool uiReleased_ = false;
 
     // 文件兜底（probe.sh 用）
     std::string statusPath_;
